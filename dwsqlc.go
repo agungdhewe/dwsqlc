@@ -1,8 +1,13 @@
 package dwsqlc
 
-type DwSqlCommand struct{}
+type DwSqlCommand struct {
+	tablename string
+}
 
-func New() (cmd *DwSqlCommand) {
+func New(tablename string) (cmd *DwSqlCommand) {
+	cmd = &DwSqlCommand{
+		tablename: tablename,
+	}
 
 	return cmd
 }

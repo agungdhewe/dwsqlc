@@ -2,13 +2,23 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/agungdhewe/dwsqlc"
 )
 
 func main() {
-	fmt.Println("test")
 
-	cmd := dwsqlc.New()
-	cmd.Ready()
+	// data := &Data{}
+	// keys := []string{"id"}
+	// dwsqlc.New("toko", data, keys)
+
+	// cmd := dwsqlc.CreateSqlInsert()
+	// sql := cmd.GetSQL()
+	// param := cmd.GetParam()
+
+	// cmd.Ready()
+
+	cobaQuerySelect()
+}
+
+func cobaQuerySelect() {
+	fmt.Println("Query Select")
 }
