@@ -6,7 +6,6 @@ import (
 	"log"
 	"reflect"
 	"slices"
-	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
@@ -30,14 +29,34 @@ func main() {
 	cobaComposeDwSqlC()
 }
 
+const DbNull = "DB_VALUE_NULL"
+const DbTrue = "DB_VALUE_TRUE"
+const DbFalse = "DB_VALUE_FALSE"
+const DbNow = "DB_VALUE_NOW"
+
+type SqlVarchar string
+type SqlBool string
+type SqlDate string
+type SqlTime string
+type SqlDateTime string
+type SqlDecimal string
+
 type Data struct {
-	Id         string  `field:"id"`
-	Nama       string  `field:"nama"`
-	IsDisabled bool    `field:"isdisabled"`
-	Tanggal    string  `field:"tanggal"`
-	Amount     float32 `field:"amount"`
-	Jam        string  `field:"jam"`
-	Timestamp  string  `field:"dt"`
+	Id         SqlVarchar  `field:"id"`
+	Nama       SqlVarchar  `field:"nama"`
+	IsDisabled SqlBool     `field:"isdisabled"`
+	Tanggal    SqlDate     `field:"tanggal"`
+	Amount     SqlDecimal  `field:"amount"`
+	Jam        SqlTime     `field:"jam"`
+	Timestamp  SqlDateTime `field:"dt"`
+}
+
+type FieldInfo struct {
+	Index int
+	Name  string
+	Value any
+	IsKey bool
+	Type  string
 }
 
 func cobaComposeDwSqlC() {
@@ -50,38 +69,59 @@ func cobaComposeDwSqlC() {
 	log.Println("database connected.")
 
 	data := &Data{
-		Id:         "satu",
-		Nama:       "agung nugroho",
-		Tanggal:    "2014-10-11",
-		Amount:     5600000,
-		Jam:        "11:12",
-		Timestamp:  time.Now().Format("2006-01-02 15:04:05"),
-		IsDisabled: false,
+		Id:   "123",
+		Nama: "agung nugroho",
+		// Tanggal: "2014-10-11",
+		// Amount:     5600000,
+		// Jam:        "11:12",
+		// Timestamp:  time.Now().Format("2006-01-02 15:04:05"),
+		IsDisabled: DbTrue,
 	}
-	keys := []string{"Id"}
 
-	fmt.Println(data)
+	keys := []string{"Id"}
 
 	// coba extract dengan reflection
 	val := reflect.ValueOf(data).Elem()
-	for i := 0; i < val.NumField(); i++ {
+
+	// loop data di struct
+	comp := map[string]*FieldInfo{}
+	n := val.NumField()
+	for i := 0; i < n; i++ {
 		typeField := val.Type().Field(i)
 		valueField := val.Field(i)
 
 		name := typeField.Name
 		field_index := 1 + typeField.Index[0]
 		field_name := typeField.Tag.Get("field")
-		field_value := valueField.Interface()
+		field_value := fmt.Sprintf("%v", valueField.Interface())
+		field_type := typeField.Type.Name()
 
-		var iskey string
+		var iskey bool
 		if slices.Contains(keys, name) {
-			iskey = "KEY"
+			iskey = true
 		} else {
-			iskey = ""
+			iskey = false
 		}
 
-		fmt.Println(field_index, name, field_name, field_value, iskey)
+		if field_value == "" {
+			continue
+		}
+
+		comp[field_name] = &FieldInfo{
+			Index: field_index,
+			Name:  field_name,
+			Value: field_value,
+			IsKey: iskey,
+			Type:  field_type,
+		}
 	}
+
+	// siapkan query
+	n = len(comp)
+
+	fmt.Println("===================")
+	fmt.Println(n)
+
 }
 
 func cobaQueryDasar() {
