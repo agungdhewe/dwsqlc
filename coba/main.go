@@ -19,181 +19,75 @@ type Heinv struct {
 }
 
 func main() {
-	// connect ke database
+	// Koneksi ke database
 	conn, err := sql.Open("pgx", "host=localhost port=5432 dbname=fgodblocal user=fgta password=rahasia")
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("connection initialized.")
 	defer conn.Close()
-	log.Println("database connected.")
 
-	// TestInsert(conn)
-	//TestUpdate(conn)
-
-	// siapkan sqlcommand
+	// Siapkan data
 	sqlc, err := dwsqlc.New("latihan.heinv", &Heinv{})
 	if err != nil {
 		panic(err.Error())
 	}
 
+	// Siapkan Transaksi
 	ctx := context.Background()
 	tx, err := conn.BeginTx(ctx, nil)
 	if err != nil {
 		panic(err.Error())
 	}
-	fmt.Println(tx)
 
-	// siapkan query insert
-	query, err := sqlc.CreateInsertQuery("Id", "Art", "Mat")
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// siapkan SQL Statement dari query yang sudah dibuat
-	var stmt *sql.Stmt
-
-	stmt, err = conn.Prepare(query.Sql())
-	if err != nil {
-		panic(err.Error())
-	}
-	defer stmt.Close()
-
-	model := sqlc.GetModel().(*Heinv)
-	model.Id = "19"
-	model.Art = "345345"
-	model.Mat = "44" //sql.NullBool{}
-	params := sqlc.CreateParameter(query, model)
-
-	_, err = stmt.Exec(params...)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Println("data inserted")
-}
-
-func TestUpdate(conn *sql.DB) {
-	// siapkan table yang akan diupdate
-	rel := dwsqlc.Relation{
-		Table:  "heinv",
-		Schema: "latihan",
-	}
-
-	// siapkan sqlcommand
-	sqlc, err := dwsqlc.New(rel, &Heinv{})
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// siapkan query update
+	sqlc.Connect(conn)
+	sqlc.SetTransaction(tx)
 	keys := []string{"Id"}
-	query, err := sqlc.CreateUpdateQuery(keys, "Id", "Art", "Mat")
+	_, err = sqlc.Update(&Heinv{
+		Id:    "TM345",
+		Art:   "55643",
+		Descr: "ini yang coba diupdate",
+	}, keys)
 	if err != nil {
 		panic(err.Error())
 	}
+	tx.Commit()
+	fmt.Println("Data Updated")
+}
 
-	// siapkan SQL Statement dari query yang sudah dibuat
-	var stmt *sql.Stmt
-	stmt, err = conn.Prepare(query.Sql())
-	if err != nil {
-		panic(err.Error())
-	}
-	defer stmt.Close()
+func TestInsert() {
 
-	model := sqlc.GetModel().(*Heinv)
-	model.Id = "17"
-	model.Art = "diupdate"
-	//model.Mat = "44" //sql.NullBool{}
-	params := sqlc.CreateParameter(query, model)
-
-	_, err = stmt.Exec(params...)
+	// Koneksi ke database
+	conn, err := sql.Open("pgx", "host=localhost port=5432 dbname=fgodblocal user=fgta password=rahasia")
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("data updated")
+	defer conn.Close()
+	log.Println("connection initialized.")
+
+	// Siapkan data
+	sqlc, err := dwsqlc.New("latihan.heinv", &Heinv{})
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Siapkan Transaksi
+	ctx := context.Background()
+	tx, err := conn.BeginTx(ctx, nil)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	sqlc.Connect(conn)
+	sqlc.SetTransaction(tx)
+	_, err = sqlc.Insert(&Heinv{
+		Id:    "TM345",
+		Art:   "55643",
+		Descr: "ini test insert",
+	})
+	if err != nil {
+		panic(err.Error())
+	}
+	tx.Commit()
+	fmt.Println("Data Inserted")
 }
-
-func TestInsert(conn *sql.DB) {
-
-	// siapkan table yang akan diinsert
-	rel := dwsqlc.Relation{
-		Table:  "heinv",
-		Schema: "latihan",
-	}
-
-	// siapkan sqlcommand
-	sqlc, err := dwsqlc.New(rel, &Heinv{})
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// siapkan query insert
-	query, err := sqlc.CreateInsertQuery("Id", "Art", "Mat")
-	if err != nil {
-		panic(err.Error())
-	}
-
-	// siapkan SQL Statement dari query yang sudah dibuat
-	var stmt *sql.Stmt
-	stmt, err = conn.Prepare(query.Sql())
-	if err != nil {
-		panic(err.Error())
-	}
-	defer stmt.Close()
-
-	model := sqlc.GetModel().(*Heinv)
-	model.Id = "17"
-	model.Art = "345345"
-	model.Mat = "44" //sql.NullBool{}
-	params := sqlc.CreateParameter(query, model)
-
-	_, err = stmt.Exec(params...)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("data inserted")
-
-}
-
-// func main() {
-
-// 	rel := dwsqlc.Relation{
-// 		Table:  "heinv",
-// 		Schema: "latihan",
-// 	}
-
-// 	sqlc, err := dwsqlc.New(rel, &Heinv{})
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-
-// 	query, err := sqlc.CreateInsertQuery("Id", "Art", "Mat")
-// 	if err != nil {
-// 		panic(err.Error())
-// 	}
-// 	fmt.Println(query.Sql())
-
-// 	// untuk update
-// 	/*
-// 		keys := []string{"Id"}
-// 		query, err := sqlc.CreateUpdateQuery(keys, "Id", "Art", "Mat")
-// 		if err != nil {
-// 			panic(err.Error())
-// 		}
-// 		fmt.Println(query.Sql())
-// 	*/
-// 	// var model *Heinv
-
-// 	// // loop 1
-// 	model := sqlc.GetModel().(*Heinv)
-// 	model.Id = 123
-// 	model.Art = "234"
-// 	model.Mat = sql.NullBool{}
-// 	params := sqlc.CreateParameter(query, model)
-// 	fmt.Println(params...)
-
-// 	// // loop 2
-// 	// model = sqlc.GetModel().(*Heinv)
-// 	// model.Id = "CC"
-// 	// sqlc.CreateParameter(query, model)
-// }
