@@ -1,32 +1,29 @@
 package dwsqlc
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
-	"log"
 	"reflect"
 )
 
-const (
-	DbValueNull  = "_DB_VALUE_NULL_"
-	DbValueTrue  = "_DB_VALUE_TRUE_"
-	DbValueFalse = "_DB_VALUE_FALSE_"
-	DbValueNow   = "_DB_VALUE_NOW_"
-)
-
-type DbTypeVarchar string
-type DbTypeInteger string
-type DbTypeBool string
-type DbTypeDate string
-type DbTypeDatetime string
-type DbTypeTime string
-type DbTypeDecimal string
+type DbTypeVarchar any
+type DbTypeInteger any
+type DbTypeBool any
+type DbTypeDate any
+type DbTypeDatetime any
+type DbTypeTime any
+type DbTypeDecimal any
 
 type DwSqlCommand struct {
 	schema     string
 	tablename  string
-	modeltype  reflect.Type
+	model      interface{}
 	fielddata  map[string]*FieldData
 	fieldnames []string
+	conn       *sql.DB
+	tx         *sql.Tx
+	ctx        context.Context
 }
 
 type Relation struct {
@@ -43,7 +40,7 @@ type FieldData struct {
 	Index         int
 }
 
-func New(relation interface{}, modeltype reflect.Type) (sqlc *DwSqlCommand, err error) {
+func New(relation interface{}, model interface{}) (sqlc *DwSqlCommand, err error) {
 	var tablename string
 	var schema string
 
@@ -61,10 +58,10 @@ func New(relation interface{}, modeltype reflect.Type) (sqlc *DwSqlCommand, err 
 
 	}
 
-	// ambil seluruh informasi field yang ada di modeltype
+	// ambil seluruh informasi field yang ada di model
 	var fielddata map[string]*FieldData
 	var fieldnames []string
-	fielddata, fieldnames, err = parseFieldData(modeltype)
+	fielddata, fieldnames, err = parseFieldData(model)
 	if err != nil {
 		return nil, err
 	}
@@ -73,50 +70,68 @@ func New(relation interface{}, modeltype reflect.Type) (sqlc *DwSqlCommand, err 
 	sqlc = &DwSqlCommand{
 		schema:     schema,
 		tablename:  tablename,
-		modeltype:  modeltype,
+		model:      model,
 		fielddata:  fielddata,
 		fieldnames: fieldnames,
+		tx:         nil,
+		conn:       nil,
 	}
 
 	return sqlc, nil
 }
 
+func (sqlc *DwSqlCommand) Connect(conn *sql.DB) {
+	sqlc.conn = conn
+}
+
+func (sqlc *DwSqlCommand) BeginTransaction() (tx *sql.Tx, err error) {
+	if sqlc.conn == nil {
+		return nil, fmt.Errorf("connection is not set, you have to call Connect(*sql.Db) first")
+	}
+
+	sqlc.ctx = context.Background()
+	tx, err = sqlc.conn.BeginTx(sqlc.ctx, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	sqlc.tx = tx
+	return tx, nil
+}
+
+func (sqlc *DwSqlCommand) Commit() {
+	if sqlc.tx == nil {
+		return
+	}
+	sqlc.tx.Commit()
+}
+
+func (sqlc *DwSqlCommand) Rollback() {
+	if sqlc.tx == nil {
+		return
+	}
+	sqlc.tx.Rollback()
+}
+
 func (sqlc *DwSqlCommand) GetModel() (model interface{}) {
-	value := reflect.New(sqlc.modeltype)
-	model = value.Interface()
-	return model
+	return sqlc.model
 }
 
-func (sqlc *DwSqlCommand) CreateInsertQuery(fieldnames ...string) (query *DwQuery) {
-	log.Println("buat querynya")
-
+func (sqlc *DwSqlCommand) affectedFields(fieldnames ...string) (fields []string) {
 	if len(fieldnames) == 0 {
-		// semua field
-		log.Println("select *")
+		// jika fieldnames tidak diisi, berarti insert untuk semua field
+		fields = sqlc.fieldnames
 	} else {
-		// field yang dipilih saja
-		log.Println("select", fieldnames)
-
+		// jika fieldname diisi, berarti yang diinsert hanya field yang dipilih saja
+		fields = fieldnames
 	}
-
-	// log.Println(len(fieldname))
-
-	query = &DwQuery{
-		sql:    "select bla bla",
-		fields: fieldnames,
-	}
-	return query
+	return fields
 }
 
-func (sqlc *DwSqlCommand) CreateUpdateQuery(keys []string, fieldnames ...string) (query *DwQuery) {
-	log.Println(len(fieldnames))
-	query = &DwQuery{
-		sql:    "update blu blu blu",
-		fields: fieldnames,
+func (sqlc *DwSqlCommand) GetTablename() (tablename string) {
+	if sqlc.schema != "" {
+		return fmt.Sprintf("%s.%s", sqlc.schema, sqlc.tablename)
+	} else {
+		return sqlc.tablename
 	}
-	return query
-}
-
-func (sqlc *DwSqlCommand) CreateParameter(query *DwQuery, model interface{}) (params []string) {
-	return params
 }

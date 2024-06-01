@@ -4,11 +4,11 @@ import (
 	"reflect"
 )
 
-func parseFieldData(modeltype reflect.Type) (fielddata map[string]*FieldData, fieldnames []string, err error) {
+func parseFieldData(model interface{}) (fielddata map[string]*FieldData, fieldnames []string, err error) {
 	fielddata = map[string]*FieldData{}
 
 	// coba extract dengan reflection
-	val := reflect.ValueOf(modeltype).Elem()
+	val := reflect.ValueOf(model).Elem()
 	n := val.NumField()
 	fieldnames = make([]string, n)
 	for i := 0; i < n; i++ {
@@ -18,7 +18,6 @@ func parseFieldData(modeltype reflect.Type) (fielddata map[string]*FieldData, fi
 		name := typeField.Name
 		index := 1 + typeField.Index[0]
 		field_name := typeField.Tag.Get("field")
-		// field_value := fmt.Sprintf("%v", valueField.Interface())
 		field_typename := typeField.Type.Name()
 		defaultvalue := typeField.Tag.Get("default")
 
@@ -27,8 +26,7 @@ func parseFieldData(modeltype reflect.Type) (fielddata map[string]*FieldData, fi
 			Name:          name,
 			FieldName:     field_name,
 			FieldTypeName: field_typename,
-			// FieldValue:    field_value,
-			DefaultValue: defaultvalue,
+			DefaultValue:  defaultvalue,
 		}
 
 		fielddata[name] = f
