@@ -10,13 +10,13 @@ if err != nil {
 	panic(err.Error())
 }
 
-// TODO: Fungsi untuk Insert
+// DONE: Fungsi untuk Insert
 res, err := sqlc.Insert(conn, &Heinv{
 	Id:  "satu",
 	Art: "sdfs",
 })
 
-// TODO: Fungsi Update
+// DONE: Fungsi Update
 res, err := sqlc.Update(conn, &Heinv{
 	Id:  "satu",
 	Art: "sdfs",
