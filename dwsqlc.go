@@ -246,6 +246,60 @@ func (sqlc *DwSqlCommand) CreateUpdateQuery(keys []string, fieldnames ...string)
 	return query, nil
 }
 
+func (sqlc *DwSqlCommand) CreateDeleteQuery(keys []string, fieldnames ...string) (query *DwQuery, err error) {
+
+	// ambil field yang akan dipakai sebagai key
+	del_keynames := make([]string, len(keys))
+	for i, keyname := range keys {
+		_, inmap := sqlc.fielddata[keyname]
+		if !inmap {
+			return nil, fmt.Errorf("key %s tidak ada di struktur %s", keyname, reflect.TypeOf(sqlc.model).Name())
+		}
+		del_keynames[i] = keyname
+	}
+
+	// ambil field yang akan diupdate
+	aff_fields := append(sqlc.affectedFields(fieldnames...), del_keynames...)
+
+	// loop data yang akan diupdate
+	for _, name := range aff_fields {
+		_, inmap := sqlc.fielddata[name]
+		if !inmap {
+			return nil, fmt.Errorf("field %s tidak ada di struktur %s", name, reflect.TypeOf(sqlc.model).Name())
+		}
+	}
+	slices.Sort(aff_fields)
+
+	fields := slices.Compact(aff_fields)
+
+	c := len(fields)
+	tmp_keys := make([]string, c)
+
+	k := 0
+	for i, name := range fields {
+		fielddata := sqlc.fielddata[name]
+		if slices.Contains(del_keynames, name) {
+			tmp_keys[k] = fmt.Sprintf("%s=$%d", fielddata.FieldName, i+1)
+			k++
+		}
+	}
+
+	del_keys := make([]string, k)
+	for i := 0; i < k; i++ {
+		del_keys[i] = tmp_keys[i]
+	}
+
+	tablename := sqlc.GetTablename()
+	fk := strings.Join(del_keys, " AND ")
+	sqltext := fmt.Sprintf("delete from %s where %s", tablename, fk)
+
+	query = &DwQuery{
+		sql:    sqltext,
+		fields: fields,
+	}
+	return query, nil
+}
+
 func (sqlc *DwSqlCommand) CreateParameter(query *DwQuery, model interface{}) (params []any) {
 	n := len(query.fields)
 	params = make([]any, n)
@@ -338,6 +392,27 @@ func (sqlc *DwSqlCommand) Update(model interface{}, keys []string) (res sql.Resu
 
 	// siapkan query
 	query, err := sqlc.CreateUpdateQuery(keys, aff_names...)
+	if err != nil {
+		return nil, err
+	}
+	// siapkan parameter
+	params := sqlc.CreateParameter(query, model)
+
+	// eksekusi
+	res, err = sqlc.ExecuteQuery(query, params)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (sqlc *DwSqlCommand) Delete(model interface{}) (res sql.Result, err error) {
+	// tandai nama-nama field yang akan diinsert
+	aff_names := getAffectedNames(model)
+
+	// siapkan query
+	query, err := sqlc.CreateDeleteQuery(aff_names, aff_names...)
 	if err != nil {
 		return nil, err
 	}
