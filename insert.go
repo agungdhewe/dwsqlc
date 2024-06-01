@@ -47,7 +47,7 @@ func (sqlc *DwSqlCommand) Insert(model interface{}) (res any, err error) {
 
 	query, err := sqlc.CreateInsertQuery("Id", "Art", "Mat")
 	if err != nil {
-		panic(err.Error())
+
 	}
 	params := sqlc.CreateParameter(query, model)
 
