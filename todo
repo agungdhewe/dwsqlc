@@ -1,0 +1,29 @@
+//DONE: siapkan table yang akan diupdate
+rel := dwsqlc.Relation{
+	Table:  "heinv",
+	Schema: "latihan",
+}
+
+// DONE: siapkan sqlcommand
+sqlc, err := dwsqlc.New(rel, &Heinv{})
+if err != nil {
+	panic(err.Error())
+}
+
+// DONE: Fungsi untuk Insert
+res, err := sqlc.Insert(conn, &Heinv{
+	Id:  "satu",
+	Art: "sdfs",
+})
+
+// DONE: Fungsi Update
+res, err := sqlc.Update(conn, &Heinv{
+	Id:  "satu",
+	Art: "sdfs",
+}, []string{"Id"})
+
+// TODO: Fungsi Update or Insert
+res, err := sqlc.UpdateOrInsert(conn, &Heinv{
+	Id:  "satu",
+	Art: "sdfs",
+}, []string{"Id"})
