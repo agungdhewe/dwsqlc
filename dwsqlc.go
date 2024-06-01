@@ -1,7 +1,6 @@
 package dwsqlc
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 	"reflect"
@@ -27,7 +26,6 @@ type DwSqlCommand struct {
 	fieldnames []string
 	conn       *sql.DB
 	tx         *sql.Tx
-	ctx        context.Context
 }
 
 type Relation struct {
