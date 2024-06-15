@@ -42,6 +42,15 @@ type FieldData struct {
 	Index         int
 }
 
+// New creates a new instance of DwSqlCommand with the given relation and model.
+//
+// Parameters:
+// - relation: The relation parameter can be either a string representing the table name or a struct of type Relation.
+// - model: The model parameter represents the data model to be used with the DwSqlCommand.
+//
+// Returns:
+// - sqlc: A pointer to the newly created DwSqlCommand instance.
+// - err: An error if the relation parameter is neither a string nor a struct of type Relation.
 func New(relation interface{}, model interface{}) (sqlc *DwSqlCommand, err error) {
 	var tablename string
 	var schema string
@@ -84,6 +93,13 @@ func New(relation interface{}, model interface{}) (sqlc *DwSqlCommand, err error
 	return sqlc, nil
 }
 
+// parseFieldData parses the field data of a given model using reflection.
+//
+// It takes a model interface{} as a parameter and returns a map[string]*FieldData,
+// a []string, and an error. The map[string]*FieldData contains the field data
+// of the model, where the key is the field name and the value is a pointer to a
+// FieldData struct. The []string contains the field names of the model. The error
+// is returned if there is an error during the parsing process.
 func parseFieldData(model interface{}) (fielddata map[string]*FieldData, fieldnames []string, err error) {
 	fielddata = map[string]*FieldData{}
 
@@ -116,18 +132,41 @@ func parseFieldData(model interface{}) (fielddata map[string]*FieldData, fieldna
 	return fielddata, fieldnames, err
 }
 
+// Connect sets the connection for DwSqlCommand.
+//
+// Parameters:
+// - conn: The database connection to be set.
 func (sqlc *DwSqlCommand) Connect(conn *sql.DB) {
 	sqlc.conn = conn
 }
 
+// SetTransaction sets the transaction for the DwSqlCommand.
+//
+// Parameters:
+// - tx: The transaction to be set.
 func (sqlc *DwSqlCommand) SetTransaction(tx *sql.Tx) {
 	sqlc.tx = tx
 }
 
+// GetModel retrieves the data model from DwSqlCommand.
+//
+// No parameters.
+// Returns the model interface{}.
 func (sqlc *DwSqlCommand) GetModel() (model interface{}) {
 	return sqlc.model
 }
 
+// affectedFields returns the list of fields affected by the DwSqlCommand.
+//
+// It takes an optional parameter `fieldnames` which is a variadic string slice.
+// If `fieldnames` is empty, it returns all the fields in `sqlc.fieldnames`.
+// Otherwise, it returns the specified `fieldnames`.
+//
+// Parameters:
+// - fieldnames: A variadic string slice representing the names of the fields to be affected.
+//
+// Returns:
+// - fields: A string slice representing the affected fields.
 func (sqlc *DwSqlCommand) affectedFields(fieldnames ...string) (fields []string) {
 	if len(fieldnames) == 0 {
 		// jika fieldnames tidak diisi, berarti insert untuk semua field
@@ -139,6 +178,14 @@ func (sqlc *DwSqlCommand) affectedFields(fieldnames ...string) (fields []string)
 	return fields
 }
 
+// GetTablename returns the fully qualified table name if a schema is defined,
+// otherwise it returns only the table name.
+//
+// Parameters:
+// - None
+//
+// Returns:
+// - tablename (string): The fully qualified table name or the table name.
 func (sqlc *DwSqlCommand) GetTablename() (tablename string) {
 	if sqlc.schema != "" {
 		return fmt.Sprintf("%s.%s", sqlc.schema, sqlc.tablename)
@@ -147,6 +194,14 @@ func (sqlc *DwSqlCommand) GetTablename() (tablename string) {
 	}
 }
 
+// CreateInsertQuery generates an SQL insert query based on the provided field names.
+//
+// Parameters:
+// - fieldnames: A variadic string slice representing the names of the fields to be inserted.
+//
+// Returns:
+// - query: A pointer to DwQuery representing the generated insert query.
+// - err: An error indicating any issues that occurred during query generation.
 func (sqlc *DwSqlCommand) CreateInsertQuery(fieldnames ...string) (query *DwQuery, err error) {
 
 	// ambil field yang akan diinsert
@@ -180,6 +235,15 @@ func (sqlc *DwSqlCommand) CreateInsertQuery(fieldnames ...string) (query *DwQuer
 	return query, nil
 }
 
+// CreateUpdateQuery generates an SQL update query based on the provided keys and field names.
+//
+// Parameters:
+// - keys: a slice of strings representing the keys to be used for the update.
+// - fieldnames: variadic parameter of strings representing the field names to be updated.
+//
+// Returns:
+// - query: a pointer to a DwQuery struct representing the generated SQL update query.
+// - err: an error if any occurred during the generation of the query.
 func (sqlc *DwSqlCommand) CreateUpdateQuery(keys []string, fieldnames ...string) (query *DwQuery, err error) {
 
 	// ambil field yang akan dipakai sebagai key
@@ -246,6 +310,15 @@ func (sqlc *DwSqlCommand) CreateUpdateQuery(keys []string, fieldnames ...string)
 	return query, nil
 }
 
+// CreateDeleteQuery generates an SQL delete query based on the provided keys and field names.
+//
+// Parameters:
+// - keys: a slice of strings representing the keys to be used for the delete.
+// - fieldnames: variadic parameter of strings representing the field names that will be used in the query.
+//
+// Returns:
+// - query: a pointer to a DwQuery struct representing the generated SQL delete query.
+// - err: an error if any occurred during the generation of the query.
 func (sqlc *DwSqlCommand) CreateDeleteQuery(keys []string, fieldnames ...string) (query *DwQuery, err error) {
 
 	// ambil field yang akan dipakai sebagai key
@@ -300,6 +373,14 @@ func (sqlc *DwSqlCommand) CreateDeleteQuery(keys []string, fieldnames ...string)
 	return query, nil
 }
 
+// CreateParameter creates parameters for the SQL query based on the model's fields.
+//
+// Parameters:
+// - query: The DwQuery containing the fields for the SQL query.
+// - model: The model interface{} from which the values are extracted.
+//
+// Returns:
+// - params: A slice of any containing the extracted values as parameters.
 func (sqlc *DwSqlCommand) CreateParameter(query *DwQuery, model interface{}) (params []any) {
 	n := len(query.fields)
 	params = make([]any, n)
@@ -311,6 +392,13 @@ func (sqlc *DwSqlCommand) CreateParameter(query *DwQuery, model interface{}) (pa
 	return params
 }
 
+// getAffectedNames returns a slice of strings containing the names of fields in the given model that are not nil.
+//
+// Parameters:
+// - model: An interface{} representing the model from which to extract the field names.
+//
+// Returns:
+// - aff_names: A slice of strings containing the names of non-nil fields in the model.
 func getAffectedNames(model interface{}) (aff_names []string) {
 	val := reflect.ValueOf(model).Elem()
 	n := val.NumField()
@@ -342,6 +430,15 @@ func getAffectedNames(model interface{}) (aff_names []string) {
 	return aff_names
 }
 
+// ExecuteQuery executes a SQL query using the provided DwQuery and parameters.
+//
+// Parameters:
+// - query: A pointer to a DwQuery object representing the SQL query to be executed.
+// - params: A variadic parameter of any type representing the parameters to be used in the query.
+//
+// Returns:
+// - res: A sql.Result object representing the result of the query execution.
+// - err: An error object if any error occurred during the query execution.
 func (sqlc *DwSqlCommand) ExecuteQuery(query *DwQuery, params []any) (res sql.Result, err error) {
 	var stmt *sql.Stmt
 	if sqlc.tx != nil {
@@ -365,6 +462,14 @@ func (sqlc *DwSqlCommand) ExecuteQuery(query *DwQuery, params []any) (res sql.Re
 	return res, nil
 }
 
+// Insert inserts data into the database using the provided model.
+//
+// Parameters:
+// - model: An interface{} representing the data model to be inserted.
+//
+// Returns:
+// - res: A sql.Result object representing the result of the insert operation.
+// - err: An error object if any error occurred during the insert operation.
 func (sqlc *DwSqlCommand) Insert(model interface{}) (res sql.Result, err error) {
 	// tandai nama-nama field yang akan diinsert
 	aff_names := getAffectedNames(model)
@@ -386,6 +491,15 @@ func (sqlc *DwSqlCommand) Insert(model interface{}) (res sql.Result, err error) 
 	return res, nil
 }
 
+// Update updates data in the database using the provided model and keys.
+//
+// Parameters:
+// - model: An interface{} representing the data model to be updated.
+// - keys: A string slice representing the keys to identify the records to be updated.
+//
+// Returns:
+// - res: A sql.Result object representing the result of the update operation.
+// - err: An error object if any error occurred during the update operation.
 func (sqlc *DwSqlCommand) Update(model interface{}, keys []string) (res sql.Result, err error) {
 	// tandai nama-nama field yang akan diinsert
 	aff_names := getAffectedNames(model)
@@ -407,6 +521,14 @@ func (sqlc *DwSqlCommand) Update(model interface{}, keys []string) (res sql.Resu
 	return res, nil
 }
 
+// Delete deletes data from the database using the provided model.
+//
+// Parameters:
+// - model: An interface{} representing the data model to be deleted.
+//
+// Returns:
+// - res: A sql.Result object representing the result of the delete operation.
+// - err: An error object if any error occurred during the delete operation.
 func (sqlc *DwSqlCommand) Delete(model interface{}) (res sql.Result, err error) {
 	// tandai nama-nama field yang akan diinsert
 	aff_names := getAffectedNames(model)
